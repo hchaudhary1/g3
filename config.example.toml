@@ -39,6 +39,14 @@ max_tokens = 4096
 temperature = 0.1
 use_oauth = true
 
+# Named Google Gemini configurations
+# [providers.gemini.default]
+# api_key = "your-gemini-api-key"
+# model = "gemini-1.5-pro"
+# max_tokens = 32768
+# temperature = 0.3
+# base_url = "https://generativelanguage.googleapis.com/v1beta"
+
 # Named OpenAI configurations
 # [providers.openai.default]
 # api_key = "your-openai-api-key"
