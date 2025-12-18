@@ -18,32 +18,36 @@ pub struct Config {
 pub struct ProvidersConfig {
     /// Default provider in format "<provider_type>.<config_name>"
     pub default_provider: String,
-    
+
     /// Provider for planner mode (optional, falls back to default_provider)
     pub planner: Option<String>,
-    
+
     /// Provider for coach in autonomous mode (optional, falls back to default_provider)
     pub coach: Option<String>,
-    
+
     /// Provider for player in autonomous mode (optional, falls back to default_provider)
     pub player: Option<String>,
-    
+
+    /// Named Google Gemini provider configs
+    #[serde(default)]
+    pub gemini: HashMap<String, GeminiConfig>,
+
     /// Named Anthropic provider configs
     #[serde(default)]
     pub anthropic: HashMap<String, AnthropicConfig>,
-    
+
     /// Named OpenAI provider configs
     #[serde(default)]
     pub openai: HashMap<String, OpenAIConfig>,
-    
+
     /// Named Databricks provider configs
     #[serde(default)]
     pub databricks: HashMap<String, DatabricksConfig>,
-    
+
     /// Named embedded provider configs
     #[serde(default)]
     pub embedded: HashMap<String, EmbeddedConfig>,
-    
+
     /// Multiple named OpenAI-compatible providers (e.g., openrouter, groq, etc.)
     #[serde(default)]
     pub openai_compatible: HashMap<String, OpenAIConfig>,
@@ -51,6 +55,15 @@ pub struct ProvidersConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIConfig {
+    pub api_key: String,
+    pub model: String,
+    pub base_url: Option<String>,
+    pub max_tokens: Option<u32>,
+    pub temperature: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GeminiConfig {
     pub api_key: String,
     pub model: String,
     pub base_url: Option<String>,
@@ -193,6 +206,7 @@ impl Default for Config {
                 planner: None,
                 coach: None,
                 player: None,
+                gemini: HashMap::new(),
                 anthropic: HashMap::new(),
                 openai: HashMap::new(),
                 databricks: databricks_configs,
@@ -306,17 +320,17 @@ impl Config {
         if let Some(path) = config_path_to_load {
             // Read and parse the config file
             let config_content = std::fs::read_to_string(&path)?;
-            
+
             // Check for old format (direct provider config without named configs)
             if Self::is_old_format(&config_content) {
                 anyhow::bail!("{}", OLD_CONFIG_FORMAT_ERROR);
             }
-            
+
             let config: Config = toml::from_str(&config_content)?;
-            
+
             // Validate the default_provider format
             config.validate_provider_reference(&config.providers.default_provider)?;
-            
+
             return Ok(config);
         }
 
@@ -327,7 +341,7 @@ impl Config {
     fn is_old_format(content: &str) -> bool {
         // Old format has [providers.anthropic] with api_key directly
         // New format has [providers.anthropic.<name>] with api_key
-        
+
         // Parse as TOML value to inspect structure
         if let Ok(value) = content.parse::<toml::Value>() {
             if let Some(providers) = value.get("providers") {
@@ -387,6 +401,15 @@ impl Config {
                     );
                 }
             }
+            "gemini" => {
+                if !self.providers.gemini.contains_key(config_name) {
+                    anyhow::bail!(
+                        "Provider config 'gemini.{}' not found. Available: {:?}",
+                        config_name,
+                        self.providers.gemini.keys().collect::<Vec<_>>()
+                    );
+                }
+            }
             "openai" => {
                 if !self.providers.openai.contains_key(config_name) {
                     anyhow::bail!(
@@ -418,7 +441,7 @@ impl Config {
                 // Check openai_compatible providers
                 if !self.providers.openai_compatible.contains_key(provider_type) {
                     anyhow::bail!(
-                        "Unknown provider type '{}'. Valid types: anthropic, openai, databricks, embedded, or openai_compatible names",
+                        "Unknown provider type '{}'. Valid types: anthropic, openai, databricks, gemini, embedded, or openai_compatible names",
                         provider_type
                     );
                 }
@@ -462,13 +485,14 @@ impl Config {
 
         // Apply model override to the active provider
         if let Some(model) = model_override {
-            let (provider_type, config_name) = Self::parse_provider_reference(
-                &config.providers.default_provider
-            )?;
+            let (provider_type, config_name) =
+                Self::parse_provider_reference(&config.providers.default_provider)?;
 
             match provider_type.as_str() {
                 "anthropic" => {
-                    if let Some(ref mut anthropic_config) = config.providers.anthropic.get_mut(&config_name) {
+                    if let Some(ref mut anthropic_config) =
+                        config.providers.anthropic.get_mut(&config_name)
+                    {
                         anthropic_config.model = model;
                     } else {
                         return Err(anyhow::anyhow!(
@@ -478,7 +502,9 @@ impl Config {
                     }
                 }
                 "databricks" => {
-                    if let Some(ref mut databricks_config) = config.providers.databricks.get_mut(&config_name) {
+                    if let Some(ref mut databricks_config) =
+                        config.providers.databricks.get_mut(&config_name)
+                    {
                         databricks_config.model = model;
                     } else {
                         return Err(anyhow::anyhow!(
@@ -487,8 +513,22 @@ impl Config {
                         ));
                     }
                 }
+                "gemini" => {
+                    if let Some(ref mut gemini_config) =
+                        config.providers.gemini.get_mut(&config_name)
+                    {
+                        gemini_config.model = model;
+                    } else {
+                        return Err(anyhow::anyhow!(
+                            "Provider config 'gemini.{}' not found.",
+                            config_name
+                        ));
+                    }
+                }
                 "embedded" => {
-                    if let Some(ref mut embedded_config) = config.providers.embedded.get_mut(&config_name) {
+                    if let Some(ref mut embedded_config) =
+                        config.providers.embedded.get_mut(&config_name)
+                    {
                         embedded_config.model_path = model;
                     } else {
                         return Err(anyhow::anyhow!(
@@ -498,7 +538,9 @@ impl Config {
                     }
                 }
                 "openai" => {
-                    if let Some(ref mut openai_config) = config.providers.openai.get_mut(&config_name) {
+                    if let Some(ref mut openai_config) =
+                        config.providers.openai.get_mut(&config_name)
+                    {
                         openai_config.model = model;
                     } else {
                         return Err(anyhow::anyhow!(
@@ -509,13 +551,12 @@ impl Config {
                 }
                 _ => {
                     // Check openai_compatible
-                    if let Some(ref mut compat_config) = config.providers.openai_compatible.get_mut(&provider_type) {
+                    if let Some(ref mut compat_config) =
+                        config.providers.openai_compatible.get_mut(&provider_type)
+                    {
                         compat_config.model = model;
                     } else {
-                        return Err(anyhow::anyhow!(
-                            "Unknown provider type: {}",
-                            provider_type
-                        ));
+                        return Err(anyhow::anyhow!("Unknown provider type: {}", provider_type));
                     }
                 }
             }
@@ -588,6 +629,11 @@ impl Config {
         self.providers.databricks.get(name)
     }
 
+    /// Get Gemini config by name
+    pub fn get_gemini_config(&self, name: &str) -> Option<&GeminiConfig> {
+        self.providers.gemini.get(name)
+    }
+
     /// Get Embedded config by name
     pub fn get_embedded_config(&self, name: &str) -> Option<&EmbeddedConfig> {
         self.providers.embedded.get(name)
@@ -595,36 +641,48 @@ impl Config {
 
     /// Get the current default provider's config
     pub fn get_default_provider_config(&self) -> Result<ProviderConfigRef<'_>> {
-        let (provider_type, config_name) = Self::parse_provider_reference(
-            &self.providers.default_provider
-        )?;
+        let (provider_type, config_name) =
+            Self::parse_provider_reference(&self.providers.default_provider)?;
 
         match provider_type.as_str() {
-            "anthropic" => {
-                self.providers.anthropic.get(&config_name)
-                    .map(ProviderConfigRef::Anthropic)
-                    .ok_or_else(|| anyhow::anyhow!("Anthropic config '{}' not found", config_name))
-            }
-            "openai" => {
-                self.providers.openai.get(&config_name)
-                    .map(ProviderConfigRef::OpenAI)
-                    .ok_or_else(|| anyhow::anyhow!("OpenAI config '{}' not found", config_name))
-            }
-            "databricks" => {
-                self.providers.databricks.get(&config_name)
-                    .map(ProviderConfigRef::Databricks)
-                    .ok_or_else(|| anyhow::anyhow!("Databricks config '{}' not found", config_name))
-            }
-            "embedded" => {
-                self.providers.embedded.get(&config_name)
-                    .map(ProviderConfigRef::Embedded)
-                    .ok_or_else(|| anyhow::anyhow!("Embedded config '{}' not found", config_name))
-            }
-            _ => {
-                self.providers.openai_compatible.get(&provider_type)
-                    .map(ProviderConfigRef::OpenAICompatible)
-                    .ok_or_else(|| anyhow::anyhow!("OpenAI compatible config '{}' not found", provider_type))
-            }
+            "anthropic" => self
+                .providers
+                .anthropic
+                .get(&config_name)
+                .map(ProviderConfigRef::Anthropic)
+                .ok_or_else(|| anyhow::anyhow!("Anthropic config '{}' not found", config_name)),
+            "openai" => self
+                .providers
+                .openai
+                .get(&config_name)
+                .map(ProviderConfigRef::OpenAI)
+                .ok_or_else(|| anyhow::anyhow!("OpenAI config '{}' not found", config_name)),
+            "databricks" => self
+                .providers
+                .databricks
+                .get(&config_name)
+                .map(ProviderConfigRef::Databricks)
+                .ok_or_else(|| anyhow::anyhow!("Databricks config '{}' not found", config_name)),
+            "gemini" => self
+                .providers
+                .gemini
+                .get(&config_name)
+                .map(ProviderConfigRef::Gemini)
+                .ok_or_else(|| anyhow::anyhow!("Gemini config '{}' not found", config_name)),
+            "embedded" => self
+                .providers
+                .embedded
+                .get(&config_name)
+                .map(ProviderConfigRef::Embedded)
+                .ok_or_else(|| anyhow::anyhow!("Embedded config '{}' not found", config_name)),
+            _ => self
+                .providers
+                .openai_compatible
+                .get(&provider_type)
+                .map(ProviderConfigRef::OpenAICompatible)
+                .ok_or_else(|| {
+                    anyhow::anyhow!("OpenAI compatible config '{}' not found", provider_type)
+                }),
         }
     }
 }
@@ -635,6 +693,7 @@ pub enum ProviderConfigRef<'a> {
     Anthropic(&'a AnthropicConfig),
     OpenAI(&'a OpenAIConfig),
     Databricks(&'a DatabricksConfig),
+    Gemini(&'a GeminiConfig),
     Embedded(&'a EmbeddedConfig),
     OpenAICompatible(&'a OpenAIConfig),
 }

@@ -142,12 +142,14 @@ pub struct Tool {
 pub mod anthropic;
 pub mod databricks;
 pub mod embedded;
+pub mod gemini;
 pub mod oauth;
 pub mod openai;
 
 pub use anthropic::AnthropicProvider;
 pub use databricks::DatabricksProvider;
 pub use embedded::EmbeddedProvider;
+pub use gemini::GeminiProvider;
 pub use openai::OpenAIProvider;
 
 impl Message {

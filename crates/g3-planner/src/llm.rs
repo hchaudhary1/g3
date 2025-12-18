@@ -70,6 +70,21 @@ pub async fn create_planner_provider(
             )?;
             Ok(Box::new(provider))
         }
+        "gemini" => {
+            let gemini_config = config
+                .get_gemini_config(&config_name)
+                .ok_or_else(|| anyhow!("Gemini config '{}' not found", config_name))?;
+
+            let provider = g3_providers::GeminiProvider::new_with_name(
+                format!("gemini.{}", config_name),
+                gemini_config.api_key.clone(),
+                Some(gemini_config.model.clone()),
+                gemini_config.base_url.clone(),
+                gemini_config.max_tokens,
+                gemini_config.temperature,
+            )?;
+            Ok(Box::new(provider))
+        }
         "databricks" => {
             let databricks_config = config
                 .get_databricks_config(&config_name)
@@ -98,7 +113,7 @@ pub async fn create_planner_provider(
         }
         _ => {
             Err(anyhow!(
-                "Unsupported provider type '{}' for planner. Supported: anthropic, openai, databricks",
+                "Unsupported provider type '{}' for planner. Supported: anthropic, openai, gemini, databricks",
                 provider_type
             ))
         }

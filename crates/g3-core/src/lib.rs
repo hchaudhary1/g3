@@ -1286,6 +1286,21 @@ impl<W: UiWriter> Agent<W> {
             }
         }
 
+        // Register Gemini providers from HashMap
+        for (name, gemini_config) in &config.providers.gemini {
+            if should_register("gemini", name) {
+                let gemini_provider = g3_providers::GeminiProvider::new_with_name(
+                    format!("gemini.{}", name),
+                    gemini_config.api_key.clone(),
+                    Some(gemini_config.model.clone()),
+                    gemini_config.base_url.clone(),
+                    gemini_config.max_tokens,
+                    gemini_config.temperature,
+                )?;
+                providers.register(gemini_provider);
+            }
+        }
+
         // Register OpenAI providers from HashMap
         for (name, openai_config) in &config.providers.openai {
             if should_register("openai", name) {
@@ -1542,6 +1557,7 @@ impl<W: UiWriter> Agent<W> {
             "anthropic" => config.providers.anthropic.get(config_name)?.max_tokens,
             "openai" => config.providers.openai.get(config_name)?.max_tokens,
             "databricks" => config.providers.databricks.get(config_name)?.max_tokens,
+            "gemini" => config.providers.gemini.get(config_name)?.max_tokens,
             "embedded" => config.providers.embedded.get(config_name)?.max_tokens,
             _ => None,
         }
@@ -1562,6 +1578,7 @@ impl<W: UiWriter> Agent<W> {
             "anthropic" => config.providers.anthropic.get(config_name)?.temperature,
             "openai" => config.providers.openai.get(config_name)?.temperature,
             "databricks" => config.providers.databricks.get(config_name)?.temperature,
+            "gemini" => config.providers.gemini.get(config_name)?.temperature,
             "embedded" => config.providers.embedded.get(config_name)?.temperature,
             _ => None,
         }
@@ -1920,6 +1937,17 @@ impl<W: UiWriter> Agent<W> {
             }
             "anthropic" => {
                 // Claude models have large context windows
+                if let Some(max_tokens) = Self::provider_max_tokens(config, provider_name) {
+                    warnings.push(format!(
+                        "Context length falling back to max_tokens ({}) for provider={}",
+                        max_tokens, provider_name
+                    ));
+                    max_tokens
+                } else {
+                    200000
+                }
+            }
+            "gemini" => {
                 if let Some(max_tokens) = Self::provider_max_tokens(config, provider_name) {
                     warnings.push(format!(
                         "Context length falling back to max_tokens ({}) for provider={}",

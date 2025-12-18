@@ -27,7 +27,8 @@ enabled = false
         let config_path = temp_dir.path().join("test_config.toml");
 
         // Write a test configuration with coach and player providers (new format)
-        let config_content = format!(r#"
+        let config_content = format!(
+            r#"
 [providers]
 default_provider = "databricks.default"
 coach = "anthropic.default"
@@ -54,7 +55,9 @@ auto_compact = true
 allow_multiple_tool_calls = false
 max_retry_attempts = 3
 autonomous_max_retry_attempts = 6
-{}"#, test_config_footer());
+{}"#,
+            test_config_footer()
+        );
 
         fs::write(&config_path, config_content).unwrap();
 
@@ -82,7 +85,8 @@ autonomous_max_retry_attempts = 6
         let config_path = temp_dir.path().join("test_config.toml");
 
         // Write a test configuration WITHOUT coach and player providers (new format)
-        let config_content = format!(r#"
+        let config_content = format!(
+            r#"
 [providers]
 default_provider = "databricks.default"
 
@@ -99,7 +103,9 @@ auto_compact = true
 allow_multiple_tool_calls = false
 max_retry_attempts = 3
 autonomous_max_retry_attempts = 6
-{}"#, test_config_footer());
+{}"#,
+            test_config_footer()
+        );
 
         fs::write(&config_path, config_content).unwrap();
 
@@ -112,11 +118,17 @@ autonomous_max_retry_attempts = 6
 
         // Test creating coach config (should use default)
         let coach_config = config.for_coach().unwrap();
-        assert_eq!(coach_config.providers.default_provider, "databricks.default");
+        assert_eq!(
+            coach_config.providers.default_provider,
+            "databricks.default"
+        );
 
         // Test creating player config (should use default)
         let player_config = config.for_player().unwrap();
-        assert_eq!(player_config.providers.default_provider, "databricks.default");
+        assert_eq!(
+            player_config.providers.default_provider,
+            "databricks.default"
+        );
     }
 
     #[test]
@@ -126,7 +138,8 @@ autonomous_max_retry_attempts = 6
         let config_path = temp_dir.path().join("test_config.toml");
 
         // Write a test configuration with an unconfigured provider (new format)
-        let config_content = format!(r#"
+        let config_content = format!(
+            r#"
 [providers]
 default_provider = "databricks.default"
 coach = "openai.default"  # OpenAI default is not configured
@@ -144,7 +157,9 @@ auto_compact = true
 allow_multiple_tool_calls = false
 max_retry_attempts = 3
 autonomous_max_retry_attempts = 6
-{}"#, test_config_footer());
+{}"#,
+            test_config_footer()
+        );
 
         fs::write(&config_path, config_content).unwrap();
 
@@ -155,8 +170,11 @@ autonomous_max_retry_attempts = 6
         let result = config.for_coach();
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("not found") || err_msg.contains("not configured"), 
-            "Expected error message to contain 'not found' or 'not configured', got: {}", err_msg);
+        assert!(
+            err_msg.contains("not found") || err_msg.contains("not configured"),
+            "Expected error message to contain 'not found' or 'not configured', got: {}",
+            err_msg
+        );
     }
 
     #[test]
@@ -166,7 +184,8 @@ autonomous_max_retry_attempts = 6
         let config_path = temp_dir.path().join("test_config.toml");
 
         // Write a test configuration with OLD format (api_key directly under [providers.anthropic])
-        let config_content = format!(r#"
+        let config_content = format!(
+            r#"
 [providers]
 default_provider = "anthropic"
 
@@ -182,7 +201,9 @@ auto_compact = true
 allow_multiple_tool_calls = false
 max_retry_attempts = 3
 autonomous_max_retry_attempts = 6
-{}"#, test_config_footer());
+{}"#,
+            test_config_footer()
+        );
 
         fs::write(&config_path, config_content).unwrap();
 
@@ -190,8 +211,11 @@ autonomous_max_retry_attempts = 6
         let result = Config::load(Some(config_path.to_str().unwrap()));
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("old format") || err_msg.contains("no longer supported"),
-            "Expected error about old format, got: {}", err_msg);
+        assert!(
+            err_msg.contains("old format") || err_msg.contains("no longer supported"),
+            "Expected error about old format, got: {}",
+            err_msg
+        );
     }
 
     #[test]
@@ -201,7 +225,8 @@ autonomous_max_retry_attempts = 6
         let config_path = temp_dir.path().join("test_config.toml");
 
         // Write a test configuration with planner provider (new format)
-        let config_content = format!(r#"
+        let config_content = format!(
+            r#"
 [providers]
 default_provider = "databricks.default"
 planner = "anthropic.planner"
@@ -224,7 +249,9 @@ auto_compact = true
 allow_multiple_tool_calls = false
 max_retry_attempts = 3
 autonomous_max_retry_attempts = 6
-{}"#, test_config_footer());
+{}"#,
+            test_config_footer()
+        );
 
         fs::write(&config_path, config_content).unwrap();
 
@@ -236,7 +263,10 @@ autonomous_max_retry_attempts = 6
 
         // Test creating planner config
         let planner_config = config.for_planner().unwrap();
-        assert_eq!(planner_config.providers.default_provider, "anthropic.planner");
+        assert_eq!(
+            planner_config.providers.default_provider,
+            "anthropic.planner"
+        );
     }
 
     #[test]
@@ -246,7 +276,8 @@ autonomous_max_retry_attempts = 6
         let config_path = temp_dir.path().join("test_config.toml");
 
         // Write a test configuration WITHOUT planner provider
-        let config_content = format!(r#"
+        let config_content = format!(
+            r#"
 [providers]
 default_provider = "databricks.default"
 
@@ -263,7 +294,9 @@ auto_compact = true
 allow_multiple_tool_calls = false
 max_retry_attempts = 3
 autonomous_max_retry_attempts = 6
-{}"#, test_config_footer());
+{}"#,
+            test_config_footer()
+        );
 
         fs::write(&config_path, config_content).unwrap();
 
@@ -272,5 +305,42 @@ autonomous_max_retry_attempts = 6
 
         // Test that planner falls back to default provider
         assert_eq!(config.get_planner_provider(), "databricks.default");
+    }
+
+    #[test]
+    fn test_gemini_provider_config() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("test_config.toml");
+
+        let config_content = format!(
+            r#"
+[providers]
+default_provider = "gemini.default"
+
+[providers.gemini.default]
+api_key = "test-gemini-key"
+model = "gemini-1.5-pro"
+max_tokens = 16000
+temperature = 0.25
+
+[agent]
+fallback_default_max_tokens = 8192
+enable_streaming = true
+timeout_seconds = 60
+auto_compact = true
+allow_multiple_tool_calls = false
+max_retry_attempts = 3
+autonomous_max_retry_attempts = 6
+{}"#,
+            test_config_footer()
+        );
+
+        fs::write(&config_path, config_content).unwrap();
+
+        let config = Config::load(Some(config_path.to_str().unwrap())).unwrap();
+        assert_eq!(config.providers.default_provider, "gemini.default");
+        let gemini_config = config.get_gemini_config("default").unwrap();
+        assert_eq!(gemini_config.model, "gemini-1.5-pro");
+        assert_eq!(gemini_config.max_tokens, Some(16000));
     }
 }
