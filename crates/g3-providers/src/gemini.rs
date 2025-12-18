@@ -84,12 +84,10 @@ impl GeminiProvider {
             );
         }
         if let Some(temperature) = request.temperature.or(self.temperature) {
-            generation_config.insert(
-                "temperature".to_string(),
-                serde_json::Value::Number(
-                    serde_json::Number::from_f64(temperature as f64).unwrap(),
-                ),
-            );
+            if let Some(number) = serde_json::Number::from_f64(temperature as f64) {
+                generation_config
+                    .insert("temperature".to_string(), serde_json::Value::Number(number));
+            }
         }
 
         if !generation_config.is_empty() {
